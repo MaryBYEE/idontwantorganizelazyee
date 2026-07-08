@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRPG 文字團錄轉換器 (角色頭貼對照表版)</title>
+    <style>
+        /* 控制台樣式 */
+        body { font-family: -apple-system, sans-serif; max-width: 850px; margin: 0 auto; padding: 20px; background: #f5f5f5; color: #333; }
+        .setup-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type="file"] { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .hint { font-weight: normal; font-size: 12px; color: #888; margin-top: 2px; }
+
+        /* 頭貼對照表樣式 */
+        #avatar-map-container { display: flex; flex-direction: column; gap: 8px; }
+        .avatar-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .avatar-row input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .avatar-name-input { flex: 1; min-width: 120px; }
+        .avatar-url-input { flex: 2; min-width: 160px; }
+        .avatar-preview { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; border: 1px solid #ddd; }
+        .avatar-color-input { width: 40px; height: 36px; padding: 2px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; flex-shrink: 0; background: white; }
+        .btn-remove-row { background: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 12px; cursor: pointer; flex-shrink: 0; font-size: 13px; }
+        .btn-remove-row:hover { background: #bd2130; }
+        .btn-add-row { background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 4px; font-size: 14px; min-width: auto; }
+        .btn-add-row:hover { background: #565e64; }
+        .btn-io { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 4px; font-size: 14px; min-width: auto; }
+        .btn-io:hover { background: #117a8b; }
+        .avatar-io-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+        /* 按鈕區塊樣式：確保一定會顯示出來 */
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        button { color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 4px; cursor: pointer; font-weight: bold; display: inline-block; min-width: 150px; text-align: center; }
+        .btn-blue { background: #007bff; }
+        .btn-blue:hover { background: #0056b3; }
+        .btn-html { background: #28a745; display: inline-block !important; }
+        .btn-html:hover { background: #218838; }
+        .btn-pdf { background: #dc3545; display: inline-block !important; }
+        .btn-pdf:hover { background: #bd2130; }
+
+        /* 生成後的成果網頁樣式 */
+        #output-area { display: none; max-width: 1000px; margin: 20px auto 0; background: #fafafa; padding: 80px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .main-title { text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 5px; color: #111; }
+        .sub-title { text-align: center; font-size: 14px; color: #666; margin-bottom: 40px; }
+
+        /* 一般對話框樣式 */
+        .chat-line { display: flex; align-items: flex-start; margin-bottom: 20px; }
+        .avatar { width: 80px; height: 80px; border-radius: 50%; margin-right: 15px; object-fit: cover; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); background: #eee; }
+        .chat-box { background: #ffffff; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 80%; }
+        .name { font-weight: bold; margin-bottom: 6px; font-size: 14px; color: #1a73e8; }
+        .time-label { font-weight: normal; font-size: 11px; color: #999; margin-left: 8px; }
+        .content { font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .inline-image { display: block; max-width: 100%; border-radius: 8px; margin-top: 8px; }
+        .attachment-block { margin: 10px 0 20px 95px; }
+        .attachment-block .inline-image { margin-top: 0; margin-bottom: 8px; }
+
+        /* 旁白專用樣式 */
+        .narrative-box { background: rgba(0, 0, 0, 0.02); border-left: 4px solid #b3b3b3; padding: 35px 20px; margin: 30px 0; border-radius: 0 8px 8px 0; }
+        .narrative-content { font-size: 15px; color: #444; line-height: 1.7; white-space: pre-wrap; }
+        .narrative-content h2 { font-size: 18px; color: #c00; margin: 15px 0 5px 0; font-weight: bold; }
+
+        /* Embed 內容：靠右顯示 */
+        .embed-line { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+        .chat-line-right { flex-direction: row-reverse; justify-content: flex-end; }
+        .chat-line-right .avatar { margin-right: 0; margin-left: 15px; }
+        .chat-line-right .name { text-align: right; }
+        .chat-line-right .chat-box.embed-box { background: #eef3ff; border: 1px dashed #a9c1f5; }
+        .embed-box { background: #eef3ff; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 80%; border: 1px dashed #a9c1f5; }
+        .embed-content { font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap; word-break: break-all; text-align: left; }
+
+        /* 標題長條分段：==========\n副標題\n========== */
+        .section-title { display: flex; align-items: center; gap: 16px; margin: 50px 0 30px; }
+        .section-title::before, .section-title::after { content: ""; flex: 1; height: 1px; background: #ccc; }
+        .section-title span { font-size: 20px; font-weight: bold; color: #333; white-space: nowrap; }
+
+        @media print { .setup-panel { display: none; } #output-area { box-shadow: none; padding: 0; background: transparent; } }
+
+        /* 說明按鈕與教學彈窗 */
+        .help-btn {
+            position: fixed; top: 20px; right: 20px; width: 44px; height: 44px;
+            border-radius: 50%; background: #6c757d; color: #fff; border: none;
+            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2); min-width: auto; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .help-btn:hover { background: #495057; }
+        .help-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            z-index: 1001; align-items: center; justify-content: center; padding: 20px;
+        }
+        .help-overlay.open { display: flex; }
+        .help-modal {
+            background: #fff; border-radius: 10px; max-width: 720px; width: 100%;
+            max-height: 85vh; overflow-y: auto; padding: 30px 35px; position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .help-modal h3 { margin-top: 28px; margin-bottom: 8px; color: #1a73e8; font-size: 18px; }
+        .help-modal h3:first-of-type { margin-top: 0; }
+        .help-modal h4 { margin-top: 16px; margin-bottom: 4px; font-size: 15px; color: #333; }
+        .help-modal p { line-height: 1.7; margin: 6px 0; font-size: 14px; color: #444; }
+        .help-modal ul, .help-modal ol { line-height: 1.7; font-size: 14px; color: #444; margin: 6px 0; padding-left: 22px; }
+        .help-modal code {
+            background: #f1f3f5; padding: 1px 6px; border-radius: 4px; font-size: 13px;
+            color: #c7254e; word-break: break-all;
+        }
+        .help-modal pre {
+            background: #f8f9fa; border: 1px solid #eee; border-radius: 6px; padding: 10px 14px;
+            font-size: 13px; overflow-x: auto; line-height: 1.6; color: #333;
+        }
+        .help-modal table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+        .help-modal th, .help-modal td { border: 1px solid #e0e0e0; padding: 6px 10px; text-align: left; }
+        .help-modal th { background: #f5f5f5; }
+        .help-modal .help-tip {
+            background: #fff8e1; border-left: 4px solid #ffc107; padding: 8px 12px;
+            font-size: 13px; margin: 10px 0; border-radius: 0 6px 6px 0;
+        }
+        .help-close-btn {
+            position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;
+            border-radius: 50%; background: #f1f3f5; border: none; font-size: 16px;
+            cursor: pointer; min-width: auto; padding: 0; color: #555;
+        }
+        .help-close-btn:hover { background: #e0e0e0; }
+        .help-modal-title { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+
+    <!-- 說明按鈕 -->
+    <button type="button" class="help-btn" onclick="toggleHelpModal(true)" title="使用教學">？</button>
+
+    <!-- 教學彈窗 -->
+    <div class="help-overlay" id="help-overlay" onclick="if(event.target === this) toggleHelpModal(false)">
+        <div class="help-modal">
+            <button type="button" class="help-close-btn" onclick="toggleHelpModal(false)">✕</button>
+            <div class="help-modal-title">📖 使用教學</div>
+            <p style="color:#888; margin-bottom:0;">把 Discord 文字團紀錄自動排版成好看的對話網頁</p>
+
+            <h3>一、基本流程</h3>
+            <ol>
+                <li>點「請選擇並上傳你的 Discord 紀錄文字檔 (.txt)：」，選擇你的紀錄檔</li>
+                <li>（可選）依需求設定下方各項功能</li>
+                <li>點「一鍵生成紀錄」，畫面下方會出現排版好的結果</li>
+                <li>點「導出 HTML 網頁」下載獨立檔案，或「另存為 PDF / 列印」</li>
+            </ol>
+            <div class="help-tip">💡 每次修改設定之後，都要重新點一次「一鍵生成紀錄」才會套用最新設定。</div>
+
+            <h3>二、對話格式（兩種可混用）</h3>
+            <h4>格式A - 角色名：對話</h4>
+            <pre>角色名：對話內容。</pre>
+            <h4>格式B - 時間+名字+內容在同一行/內容寫在下面</h4>
+            <pre>[2026/1/12 下午 10:00] 角色名
+這是對話內容，可以寫好幾行
+（用一個空白行結束這一則訊息）</pre>
+            <p>時間格式固定要是 <code>[年/月/日 上午或下午 時:分]</code>，所有訊息生成時會自動依時間排序。時間預設不顯示，可用「顯示訊息時間」勾選框開啟。</p>
+
+            <h3>三、標題設定</h3>
+            <p>可以填入「主標題」「副標題」「日期」三個欄位，留空的話會自動使用 txt 檔案裡的 <code>Guild:</code>／<code>Channel:</code> 設定（或系統預設值），日期留空則自動填今天。</p>
+            <pre>Guild: 番茄大戶頻道
+Channel: 泡泡薑餅人</pre>
+
+            <h3>四、旁白</h3>
+            <p><strong>手動標記：</strong>以「旁白：」開頭的內容會自動排成無頭像、灰底的旁白樣式。</p>
+            <p><strong>自動身份：</strong>在「設定「旁白」身份」欄位輸入名字（逗號分隔），這些人說的話都會自動變旁白，不用每次手動標記。</p>
+            <p>旁白文字支援：<code>**文字**</code> 變粗體、<code>## **文字**</code> 變紅色小標題。</p>
+
+            <h3>五、角色頭貼對照表</h3>
+            <p>每一列可設定：名字、頭貼網址、名字顏色（色票，不改則預設藍色）。點「＋ 新增一欄」可新增角色，「刪除」移除。若紀錄裡某行寫 <code>名字[網址]</code>，會優先用行內網址。</p>
+            <p>「⬇ 匯出角色資料」可把整份角色設定存成 JSON；「⬆ 匯入角色資料」可還原之前存的設定，不用重填。</p>
+
+            <h3>六、Embed（擲骰／技能檢定）</h3>
+            <p>用 <code>{Embed}</code> 標記，會靠右顯示成框框：</p>
+            <pre>{Embed}
+技能值: 敏捷 60
+擲骰: 1d100
+結果: 45 成功</pre>
+            <p><strong>歸屬給角色（顯示頭像）：</strong>在 <code>{Embed}</code> 後面接<strong>已登記在角色頭貼對照表裡</strong>的名字＋冒號，會附上頭像、靠右顯示：</p>
+            <pre>{Embed}角色名：對話內容
+（或分兩行）
+{Embed}角色名：
+對話內容</pre>
+            <div class="help-tip">⚠️ 名字必須先登記在「角色頭貼對照表」（就算沒填頭貼網址、只填名字也算數），否則會被當成一般 Embed，避免跟「技能值:」這種標籤搞混。</div>
+
+            <h3>七、圖片與附件</h3>
+            <p>訊息裡直接貼圖片網址（.png/.jpg/.jpeg/.gif/.webp/.bmp，包含 Discord CDN 長網址）會自動顯示成圖片。</p>
+            <p>如果 Discord 匯出格式把附件另外列出來，用 <code>{Attachments}</code> 標記：</p>
+            <pre>{Attachments}
+https://cdn.discordapp.com/attachments/.../image.png?...</pre>
+
+            <h3>八、分段標題</h3>
+            <p>用長條線（3 個以上 <code>=</code>）夾住標題文字，可以把紀錄切成好幾段：</p>
+            <pre>==========================================================
+第一天
+==========================================================</pre>
+            <p>顏色可在「標題顏色」色票自訂。</p>
+
+            <h3>九、主標題圖片</h3>
+            <p>勾選「在最上方主標題加上一張圖片」並填入圖片網址，就會在整份紀錄最上方顯示這張圖（例如團的主視覺）。</p>
+
+            <h3>十、常見問題</h3>
+            <p><strong>圖片顯示不出來？</strong>確認網址是完整 <code>https://</code> 開頭，且副檔名是支援的圖片格式。</p>
+            <p><strong>頭貼沒套用？</strong>對照表裡的名字要跟 txt 裡「一字不差」，注意有沒有多打空格。</p>
+            <p><strong>時間排序亂掉？</strong>確認時間格式是 <code>[2026/5/29 下午 10:19]</code> 這種固定格式。</p>
+            <p><strong>改了設定畫面沒變？</strong>記得要重新點一次「一鍵生成紀錄」。</p>
+        </div>
+    </div>
+
+    <!-- 頂部控制台 -->
+    <div class="setup-panel">
+        <h2>TRPG 紀錄全自動排版產生器 <span class="hint">*有問題可以點擊右上角說明</span></h2>
+
+        <div class="input-group">
+            <label>請選擇並上傳你的 Discord 紀錄文字檔 (.txt)：</label>
+            <input type="file" id="input-txt" accept=".txt">
+        </div>
+
+        <div class="input-group">
+            <label>標題設定（可選）
+                <span class="hint">（留空的話，主標題／副標題會自動使用 txt 檔案裡的 Guild:／Channel: 設定）</span>
+            </label>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <input type="text" id="custom-channel-input" placeholder="主標題" style="flex:1; min-width:150px; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="text" id="custom-guild-input" placeholder="副標題（例如：團錄）" style="flex:1; min-width:150px; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                <input type="text" id="custom-date-input" placeholder="日期（留空則自動填今天）" style="flex:1; min-width:150px; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>角色頭貼對照表
+                <span class="hint">（輸入角色名字、頭貼網址與名字顏色（可選，不改就用預設藍色），可自由新增欄位。生成時會依名字自動比對套用；若某一行文字本身有寫 [網址]，則該行以行內網址優先。）</span>
+            </label>
+            <div id="avatar-map-container"></div>
+            <div class="avatar-io-group">
+                <button type="button" class="btn-add-row" onclick="addAvatarRow()">＋ 新增一欄</button>
+                <button type="button" class="btn-io" onclick="exportAvatarData()">⬇ 匯出角色資料</button>
+                <button type="button" class="btn-io" onclick="triggerAvatarImport()">⬆ 匯入角色資料</button>
+                <input type="file" id="avatar-import-input" accept=".json" style="display:none" onchange="handleAvatarImport(event)">
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>設定「旁白」身份
+                <span class="hint">（這些名字說的話，會自動排版成旁白樣式，不會顯示頭像和名字。多個名字請用逗號分隔）</span>
+            </label>
+            <input type="text" id="narrator-names-input" placeholder="例如：GM, 主持人">
+        </div>
+
+        <div class="input-group">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
+                <input type="checkbox" id="show-timestamp-checkbox" style="width:auto;">
+                在生成結果中顯示訊息時間（例如 2026/1/1 下午 10:00）
+            </label>
+        </div>
+
+        <div class="input-group">
+            <label style="display:flex; align-items:center; gap:8px;">
+                標題顏色
+                <input type="color" id="title-color-input" value="#333333" style="width:40px; height:36px; padding:2px; border:1px solid #ccc; border-radius:4px; cursor:pointer;">
+                <span class="hint" style="margin:0;">（套用在「==========標題==========」這種分段標題文字上，預設深灰色）</span>
+            </label>
+        </div>
+
+        <div class="input-group">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
+                <input type="checkbox" id="header-image-checkbox" style="width:auto;">
+                在最上方主標題加上一張圖片
+            </label>
+            <input type="text" id="header-image-url-input" placeholder="圖片網址 (https://...)" style="margin-top:8px;">
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-blue" onclick="generateLog()">一鍵生成紀錄</button>
+            <button class="btn-html" onclick="exportHTML()">導出 HTML 網頁</button>
+            <button class="btn-pdf" onclick="window.print()">另存為 PDF / 列印</button>
+        </div>
+    </div>
+
+    <!-- 輸出結果區 -->
+    <div id="output-area">
+        <img id="out-header-image" style="display:none; max-width:100%; border-radius:8px; margin-bottom:20px;" alt="標題圖片">
+        <h1 class="main-title" id="out-title"></h1>
+        <div class="sub-title" id="out-date"></div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 30px;">
+        <div id="chat-container"></div>
+    </div>
+
+    <script>
+        // ===== 說明彈窗 =====
+        function toggleHelpModal(show) {
+            const overlay = document.getElementById('help-overlay');
+            overlay.classList.toggle('open', show);
+        }
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') toggleHelpModal(false);
+        });
+
+        let globalGuildName = "團錄";
+        let globalChannelName = "本篇";
+
+        // ===== 角色頭貼對照表 =====
+        function addAvatarRow(name = "", url = "", color = "#1a73e8") {
+            const container = document.getElementById('avatar-map-container');
+            const row = document.createElement('div');
+            row.className = 'avatar-row';
+
+            const preview = document.createElement('img');
+            preview.className = 'avatar-preview';
+            preview.src = url || '';
+            preview.onerror = function () { this.style.visibility = 'hidden'; };
+            preview.onload = function () { this.style.visibility = 'visible'; };
+            if (!url) preview.style.visibility = 'hidden';
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'avatar-name-input';
+            nameInput.placeholder = '角色名字（需與紀錄中的名字一致）';
+            nameInput.value = name;
+
+            const urlInput = document.createElement('input');
+            urlInput.type = 'text';
+            urlInput.className = 'avatar-url-input';
+            urlInput.placeholder = '頭貼網址 (https://...)';
+            urlInput.value = url;
+            urlInput.addEventListener('input', () => {
+                preview.src = urlInput.value.trim();
+            });
+
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.className = 'avatar-color-input';
+            colorInput.title = '名字顏色（不改則使用預設藍色）';
+            colorInput.value = color || '#1a73e8';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-remove-row';
+            removeBtn.textContent = '刪除';
+            removeBtn.onclick = () => row.remove();
+
+            row.appendChild(preview);
+            row.appendChild(nameInput);
+            row.appendChild(urlInput);
+            row.appendChild(colorInput);
+            row.appendChild(removeBtn);
+            container.appendChild(row);
+        }
+
+        function getAvatarMap() {
+            const map = {};
+            document.querySelectorAll('.avatar-row').forEach(row => {
+                const name = row.querySelector('.avatar-name-input').value.trim();
+                const url = row.querySelector('.avatar-url-input').value.trim();
+                const color = row.querySelector('.avatar-color-input').value;
+                if (name) {
+                    map[name] = { url, color };
+                }
+            });
+            return map;
+        }
+
+        // ===== 角色資料匯出／匯入 =====
+        function exportAvatarData() {
+            const rows = [];
+            document.querySelectorAll('.avatar-row').forEach(row => {
+                rows.push({
+                    name: row.querySelector('.avatar-name-input').value,
+                    url: row.querySelector('.avatar-url-input').value,
+                    color: row.querySelector('.avatar-color-input').value
+                });
+            });
+            const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'trpg_角色資料.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function triggerAvatarImport() {
+            document.getElementById('avatar-import-input').click();
+        }
+
+        function handleAvatarImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!Array.isArray(data)) throw new Error('格式錯誤');
+                    document.getElementById('avatar-map-container').innerHTML = '';
+                    if (data.length === 0) {
+                        addAvatarRow();
+                        addAvatarRow();
+                    } else {
+                        data.forEach(item => addAvatarRow(item.name || '', item.url || '', item.color || '#1a73e8'));
+                    }
+                } catch (err) {
+                    alert('匯入失敗，請確認選擇的是先前用「匯出角色資料」產生的 JSON 檔案。');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // 預設先給兩欄空白，方便使用者直接填寫
+        addAvatarRow();
+        addAvatarRow();
+
+        // ===== 旁白身份設定 =====
+        function getNarratorSet() {
+            const raw = document.getElementById('narrator-names-input').value || "";
+            return new Set(raw.split(/[,，]/).map(s => s.trim()).filter(Boolean));
+        }
+
+        // ===== 時間戳記解析：[2026/5/29 下午 10:19] =====
+        const TIMESTAMP_OUTER_RE = /^\[([^\]]+)\]\s*/;
+        const TIMESTAMP_INNER_RE = /^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(上午|下午)\s*(\d{1,2}):(\d{2})$/;
+
+        function stripTimestamp(trimmed) {
+            const outer = trimmed.match(TIMESTAMP_OUTER_RE);
+            if (!outer) return { ts: null, rest: trimmed, raw: null };
+            const inner = outer[1].trim().match(TIMESTAMP_INNER_RE);
+            if (!inner) return { ts: null, rest: trimmed, raw: null };
+            let [, y, mo, d, ampm, h, mi] = inner;
+            let hour = parseInt(h, 10);
+            if (ampm === '下午' && hour !== 12) hour += 12;
+            if (ampm === '上午' && hour === 12) hour = 0;
+            const ts = new Date(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(d, 10), hour, parseInt(mi, 10));
+            return { ts, rest: trimmed.slice(outer[0].length), raw: outer[1].trim() };
+        }
+
+        function isEmbedMarker(text) {
+            return /^\{Embed\}/i.test(text.trim());
+        }
+
+        function isAttachmentMarker(text) {
+            return /^\{Attachments?\}/i.test(text.trim());
+        }
+
+        // 偵測文字中的圖片網址，自動轉成可顯示的圖片
+        const IMAGE_URL_RE = /(https?:\/\/\S+\.(?:png|jpe?g|gif|webp|bmp)(?:\?\S*)?)/gi;
+        function embedImages(text) {
+            return text.replace(IMAGE_URL_RE, (url) => `<img src="${url}" class="inline-image" alt="圖片">`);
+        }
+
+        function generateLog() {
+            const fileInput = document.getElementById('input-txt');
+            if (fileInput.files.length === 0) {
+                alert("請先選擇一個 .txt 檔案！");
+                return;
+            }
+
+            // 每次生成都重設回預設值，避免上一次生成的 Guild/Channel 殘留
+            globalGuildName = "團錄";
+            globalChannelName = "本篇";
+
+            const avatarMap = getAvatarMap();
+            const narratorSet = getNarratorSet();
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.replace(/\r\n/g, '\n').split('\n');
+                const container = document.getElementById('chat-container');
+                container.innerHTML = '';
+
+                const showTimestamp = document.getElementById('show-timestamp-checkbox').checked;
+                const titleColor = document.getElementById('title-color-input').value || '#333333';
+
+                // entries：依原始順序收集，稍後依時間排序後再一次輸出
+                const entries = [];
+                let lastKnownTs = null; // 用來讓沒有時間戳記的內容（旁白、Embed 續行等）跟著前一則訊息排序
+
+                // openAcc 型別：
+                //  narrative / embed：{ type, text, sortKey }
+                //  chat（新格式：時間+名字獨立一行，內容在下面幾行）：{ type:'chat', speaker, text, sortKey, timeLabel }
+                let openAcc = null;
+
+                // ===== 標題長條偵測：==========\n副標題\n========== =====
+                const BAR_RE = /^={3,}$/;
+                let barState = 0; // 0：一般狀態；1：已看到開頭長條，正在收集標題文字
+                let titleLines = [];
+
+                function currentSortKey() {
+                    return lastKnownTs !== null ? lastKnownTs.getTime() : -Infinity;
+                }
+
+                // Embed 內容第一行若符合「角色名字：」或「角色名字：對話」，
+                // 且該名字有登記在角色頭貼對照表裡，就視為這則 Embed 屬於該角色，
+                // 會附上該角色的頭像、名字顏色，並靠右顯示。
+                // （用「有沒有登記在對照表」來判斷，才不會跟「技能值: 60」這種標籤搞混）
+                function pushEmbedEntry(text, sortKey) {
+                    const lines = text.split('\n');
+                    const firstLine = (lines[0] || '').trim();
+                    const nameMatch = firstLine.match(/^([^：:]+)[：:]\s*(.*)$/);
+                    const speaker = nameMatch ? nameMatch[1].trim() : '';
+                    const rowData = speaker ? avatarMap[speaker] : null;
+
+                    if (nameMatch && speaker && rowData) {
+                        const inlineContent = nameMatch[2].trim();
+                        const restLines = lines.slice(1).join('\n').trim();
+                        const body = inlineContent && restLines ? inlineContent + "\n" + restLines : (inlineContent || restLines);
+                        entries.push({
+                            sortKey,
+                            type: 'embed',
+                            speaker,
+                            avatarUrl: rowData.url || '',
+                            nameColor: rowData.color || null,
+                            text: body
+                        });
+                    } else {
+                        entries.push({ sortKey, type: 'embed', text: text.trim() });
+                    }
+                }
+
+                function pushChatEntry(speaker, content, sortKey, timeLabel) {
+                    let avatarUrl = "";
+                    // 精準切出名字後面的中括號 [網址]（行內指定，優先權最高）
+                    let startIdx = speaker.indexOf('[');
+                    let endIdx = speaker.indexOf(']');
+                    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+                        avatarUrl = speaker.substring(startIdx + 1, endIdx).trim();
+                        speaker = speaker.substring(0, startIdx).trim();
+                    }
+
+                    // 內容本身若以 {Embed} 開頭，整則訊息改為靠右顯示的 Embed 樣式
+                    if (isEmbedMarker(content)) {
+                        pushEmbedEntry(content.replace(/^\{Embed\}/i, '').trim(), sortKey);
+                        return;
+                    }
+
+                    // 若內容中有圖片網址，自動轉換成可顯示的圖片
+                    content = embedImages(content);
+
+                    // 設定為旁白身份的使用者，訊息一律排成旁白樣式
+                    if (narratorSet.has(speaker)) {
+                        entries.push({ sortKey, type: 'narrative', text: content.trim() });
+                        return;
+                    }
+
+                    const rowData = avatarMap[speaker];
+                    if (!avatarUrl && rowData && rowData.url) {
+                        avatarUrl = rowData.url;
+                    }
+                    const nameColor = rowData && rowData.color ? rowData.color : null;
+
+                    entries.push({ sortKey, type: 'chat', speaker, content, avatarUrl, nameColor, timeLabel: showTimestamp ? timeLabel : null });
+                }
+
+                function flushOpenAcc() {
+                    if (!openAcc) return;
+                    if (openAcc.type === 'chat') {
+                        const content = openAcc.text.trim();
+                        if (content) {
+                            pushChatEntry(openAcc.speaker, content, openAcc.sortKey, openAcc.timeLabel);
+                        }
+                    } else if (openAcc.type === 'embed') {
+                        const text = openAcc.text.trim();
+                        if (text) pushEmbedEntry(text, openAcc.sortKey);
+                    } else if (openAcc.text.trim()) {
+                        entries.push({ sortKey: openAcc.sortKey, type: openAcc.type, text: openAcc.text.trim() });
+                    }
+                    openAcc = null;
+                }
+
+                lines.forEach(rawLine => {
+                    let trimmed = rawLine.trim();
+                    if (!trimmed) {
+                        // 空行：訊息與 Embed 內容以空行分隔，視為該區塊結束；旁白允許跨空行延續
+                        if (openAcc && openAcc.type !== 'narrative') flushOpenAcc();
+                        return;
+                    }
+                    if (BAR_RE.test(trimmed)) {
+                        if (barState === 0) {
+                            // 開頭長條：結束目前開啟的區塊，開始收集標題文字
+                            flushOpenAcc();
+                            barState = 1;
+                            titleLines = [];
+                        } else {
+                            // 結尾長條：收尾，把中間收集到的文字變成一個「標題」區塊
+                            barState = 0;
+                            const titleText = titleLines.join(' ').trim();
+                            if (titleText) {
+                                entries.push({ sortKey: currentSortKey(), type: 'title', text: titleText });
+                            }
+                        }
+                        return;
+                    }
+
+                    if (barState === 1) {
+                        // 正在長條中間，這一行就是標題文字
+                        titleLines.push(trimmed);
+                        return;
+                    }
+
+                    if (trimmed.startsWith('Guild:')) {
+                        globalGuildName = trimmed.replace('Guild:', '').trim();
+                        return;
+                    }
+                    if (trimmed.startsWith('Channel:')) {
+                        globalChannelName = trimmed.replace('Channel:', '').trim();
+                        return;
+                    }
+
+                    // 拆出行首的時間戳記（若有），時間戳記本身預設不顯示在最終結果中（可由勾選框開啟）
+                    const { ts, rest, raw } = stripTimestamp(trimmed);
+                    if (ts) lastKnownTs = ts;
+
+                    // ===== 處理目前正在收集中的區塊（若有） =====
+                    if (openAcc) {
+                        if (openAcc.type === 'chat') {
+                            // 新格式的訊息內容：只要沒有新的時間戳記、也不是旁白/Embed/Attachments 開頭，就視為內容延續
+                            if (!ts && !isEmbedMarker(rest) && !isAttachmentMarker(rest) && !(rest.startsWith('旁白：') || rest.startsWith('旁白:'))) {
+                                openAcc.text += rawLine + "\n";
+                                return;
+                            }
+                            flushOpenAcc();
+                        } else if (openAcc.type === 'embed') {
+                            if (!ts && !isEmbedMarker(rest) && !isAttachmentMarker(rest) && !(rest.startsWith('旁白：') || rest.startsWith('旁白:'))) {
+                                openAcc.text += rest + "\n";
+                                return;
+                            }
+                            flushOpenAcc();
+                        } else if (openAcc.type === 'attachment') {
+                            if (!ts && !isEmbedMarker(rest) && !isAttachmentMarker(rest) && !(rest.startsWith('旁白：') || rest.startsWith('旁白:'))) {
+                                openAcc.text += rest + "\n";
+                                return;
+                            }
+                            flushOpenAcc();
+                        }
+                        // narrative 類型不在此處理，讓下方邏輯依需要決定是否要接續或另開新區塊
+                    }
+
+                    // 明確標示的旁白：「旁白：...」
+                    if (rest.startsWith('旁白：') || rest.startsWith('旁白:')) {
+                        flushOpenAcc();
+                        openAcc = { type: 'narrative', text: rest.replace(/^旁白[：:]/, '') + "\n", sortKey: currentSortKey() };
+                        return;
+                    }
+
+                    // {Embed} 區塊開頭
+                    if (isEmbedMarker(rest)) {
+                        flushOpenAcc();
+                        openAcc = { type: 'embed', text: rest.replace(/^\{Embed\}/i, '').trim() + "\n", sortKey: currentSortKey() };
+                        return;
+                    }
+
+                    // {Attachments} 區塊開頭：後面接的網址會直接顯示成圖片
+                    if (isAttachmentMarker(rest)) {
+                        flushOpenAcc();
+                        openAcc = { type: 'attachment', text: rest.replace(/^\{Attachments?\}/i, '').trim() + "\n", sortKey: currentSortKey() };
+                        return;
+                    }
+
+                    // 舊格式：「[時間] 名字：內容」在同一行
+                    // 注意：網址本身也帶冒號（https:），要先排除，避免把網址誤判成「名字：內容」
+                    const inlineMatch = /^https?:\/\//i.test(rest) ? null : rest.match(/^(?:\[.*?\]\s*)?([^：:]+?)\s*[：:]\s*(.*)/);
+                    if (inlineMatch) {
+                        flushOpenAcc();
+                        pushChatEntry(inlineMatch[1].trim(), inlineMatch[2], currentSortKey(), raw);
+                        return;
+                    }
+
+                    // 新格式：「[時間] 名字」單獨一行，內容在接下來幾行
+                    if (ts && rest) {
+                        flushOpenAcc();
+                        openAcc = { type: 'chat', speaker: rest, text: '', sortKey: currentSortKey(), timeLabel: raw };
+                        return;
+                    }
+
+                    // 無法辨識的行：延續目前開啟的旁白區塊，若沒有則預設當作旁白
+                    if (!openAcc || openAcc.type !== 'narrative') {
+                        openAcc = { type: 'narrative', text: '', sortKey: currentSortKey() };
+                    }
+                    openAcc.text += rawLine + "\n";
+                });
+
+                flushOpenAcc();
+
+                // 若檔案結尾時長條還沒收尾（缺少結尾長條），仍把已收集到的文字視為標題輸出
+                if (barState === 1) {
+                    const titleText = titleLines.join(' ').trim();
+                    if (titleText) {
+                        entries.push({ sortKey: currentSortKey(), type: 'title', text: titleText });
+                    }
+                }
+
+                // 依時間排序（穩定排序：沒有時間戳記者，會維持在最近一則有時間戳記內容的相對位置）
+                entries.sort((a, b) => a.sortKey - b.sortKey);
+
+                entries.forEach(entry => {
+                    if (entry.type === 'chat') {
+                        const chatLine = document.createElement('div');
+                        chatLine.className = 'chat-line';
+                        let avatarHtml = entry.avatarUrl ? `<img class="avatar" src="${entry.avatarUrl}" alt="${entry.speaker}">` : `<div class="avatar"></div>`;
+                        let nameStyle = entry.nameColor ? ` style="color:${entry.nameColor}"` : '';
+                        let timeHtml = entry.timeLabel ? `<span class="time-label">${entry.timeLabel}</span>` : '';
+                        chatLine.innerHTML = `
+                            ${avatarHtml}
+                            <div class="chat-box">
+                                <div class="name"${nameStyle}>${entry.speaker}${timeHtml}</div>
+                                <div class="content">${entry.content}</div>
+                            </div>
+                        `;
+                        container.appendChild(chatLine);
+                    } else if (entry.type === 'embed') {
+                        if (entry.speaker) {
+                            const chatLine = document.createElement('div');
+                            chatLine.className = 'chat-line chat-line-right';
+                            let avatarHtml = entry.avatarUrl ? `<img class="avatar" src="${entry.avatarUrl}" alt="${entry.speaker}">` : `<div class="avatar"></div>`;
+                            let nameStyle = entry.nameColor ? ` style="color:${entry.nameColor}"` : '';
+                            chatLine.innerHTML = `
+                                ${avatarHtml}
+                                <div class="chat-box embed-box">
+                                    <div class="name"${nameStyle}>${entry.speaker}</div>
+                                    <div class="content embed-content">${embedImages(entry.text).replace(/\n/g, '<br>')}</div>
+                                </div>
+                            `;
+                            container.appendChild(chatLine);
+                        } else {
+                            const embedLine = document.createElement('div');
+                            embedLine.className = 'embed-line';
+                            embedLine.innerHTML = `<div class="embed-box"><div class="embed-content">${embedImages(entry.text).replace(/\n/g, '<br>')}</div></div>`;
+                            container.appendChild(embedLine);
+                        }
+                    } else if (entry.type === 'attachment') {
+                        const attDiv = document.createElement('div');
+                        attDiv.className = 'attachment-block';
+                        attDiv.innerHTML = embedImages(entry.text).replace(/\n/g, '<br>');
+                        container.appendChild(attDiv);
+                    } else if (entry.type === 'title') {
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = 'section-title';
+                        titleDiv.innerHTML = `<span style="color:${titleColor}">${entry.text}</span>`;
+                        container.appendChild(titleDiv);
+                    } else {
+                        const box = document.createElement('div');
+                        box.className = 'narrative-box';
+                        let formatted = entry.text
+                            .replace(/##\s*\*\*(.*?)\*\*/g, '<h2>$1</h2>')
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        box.innerHTML = `<div class="narrative-content">${formatted.replace(/\n/g, '<br>')}</div>`;
+                        container.appendChild(box);
+                    }
+                });
+
+                // 主標題／副標題／日期：使用者手動輸入的值優先，沒填才用 txt 解析出來的值或自動日期
+                const customChannel = document.getElementById('custom-channel-input').value.trim();
+                const customGuild = document.getElementById('custom-guild-input').value.trim();
+                const customDate = document.getElementById('custom-date-input').value.trim();
+
+                const finalChannelName = customChannel || globalChannelName;
+                const finalGuildName = customGuild || globalGuildName;
+                const finalDateText = customDate || new Date().toLocaleDateString();
+
+                document.getElementById('out-title').innerText = finalChannelName;
+                document.getElementById('out-date').innerText = finalGuildName + " ｜ 日期：" + finalDateText;
+
+                const headerImageEl = document.getElementById('out-header-image');
+                const showHeaderImage = document.getElementById('header-image-checkbox').checked;
+                const headerImageUrl = document.getElementById('header-image-url-input').value.trim();
+                if (showHeaderImage && headerImageUrl) {
+                    headerImageEl.src = headerImageUrl;
+                    headerImageEl.style.display = 'block';
+                } else {
+                    headerImageEl.removeAttribute('src');
+                    headerImageEl.style.display = 'none';
+                }
+
+                document.getElementById('output-area').style.display = 'block';
+                document.getElementById('output-area').scrollIntoView({ behavior: 'smooth' });
+            };
+
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function exportHTML() {
+            const container = document.getElementById('chat-container');
+            if (!container.innerHTML.trim()) {
+                alert("請先上傳檔案並點擊『藍色按鈕』生成紀錄後，再點擊綠色按鈕導出！");
+                return;
+            }
+
+            const titleText = document.getElementById('out-title').innerText;
+            const dateText = document.getElementById('out-date').innerText;
+            const logContent = container.innerHTML;
+
+            const headerImageEl = document.getElementById('out-header-image');
+            const headerImageHtml = (headerImageEl.style.display !== 'none' && headerImageEl.src)
+                ? `<img src="${headerImageEl.src}" style="max-width:100%; border-radius:8px; margin-bottom:20px;" alt="標題圖片">`
+                : '';
+
+            const finalHTML = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>${titleText}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 1000px; margin: 0 auto; padding: 80px 80px; background-color: #fafafa; color: #333; }
+        .main-title { text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 5px; color: #111; }
+        .sub-title { text-align: center; font-size: 14px; color: #666; margin-bottom: 40px; }
+        .chat-line { display: flex; align-items: flex-start; margin-bottom: 20px; }
+        .avatar { width: 80px; height: 80px; border-radius: 50%; margin-right: 15px; object-fit: cover; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); background: #eee; }
+        .chat-box { background: #ffffff; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 80%; }
+        .name { font-weight: bold; margin-bottom: 6px; font-size: 14px; color: #1a73e8; }
+        .time-label { font-weight: normal; font-size: 11px; color: #999; margin-left: 8px; }
+        .content { font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .inline-image { display: block; max-width: 100%; border-radius: 8px; margin-top: 8px; }
+        .attachment-block { margin: 10px 0 20px 95px; }
+        .attachment-block .inline-image { margin-top: 0; margin-bottom: 8px; }
+        .narrative-box { background: rgba(0, 0, 0, 0.02); border-left: 4px solid #b3b3b3; padding: 35px 20px; margin: 30px 0; border-radius: 0 8px 8px 0; }
+        .narrative-content { font-size: 15px; color: #444; line-height: 1.7; white-space: pre-wrap; }
+        .narrative-content h2 { font-size: 18px; color: #c00; margin: 15px 0 5px 0; font-weight: bold; }
+        .embed-line { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+        .chat-line-right { flex-direction: row-reverse; justify-content: flex-end; }
+        .chat-line-right .avatar { margin-right: 0; margin-left: 15px; }
+        .chat-line-right .name { text-align: right; }
+        .chat-line-right .chat-box.embed-box { background: #eef3ff; border: 1px dashed #a9c1f5; }
+        .embed-box { background: #eef3ff; padding: 12px 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 80%; border: 1px dashed #a9c1f5; }
+        .embed-content { font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap; word-break: break-all; text-align: left; }
+
+        /* 標題長條分段：==========\n副標題\n========== */
+        .section-title { display: flex; align-items: center; gap: 16px; margin: 50px 0 30px; }
+        .section-title::before, .section-title::after { content: ""; flex: 1; height: 1px; background: #ccc; }
+        .section-title span { font-size: 20px; font-weight: bold; color: #333; white-space: nowrap; }
+    </style>
+</head>
+<body>
+    ${headerImageHtml}
+    <h1 class="main-title">${titleText}</h1>
+    <div class="sub-title">${dateText}</div>
+    <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 30px;">
+    <div id="chat-container">${logContent}</div>
+</body>
+</html>`;
+
+            const blob = new Blob([finalHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (titleText || 'trpg_log').replace(/[\\/:*?"<>|]/g, '_') + '.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
