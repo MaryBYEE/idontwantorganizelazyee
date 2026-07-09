@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRPG 文字團錄轉換器 (角色頭貼對照表版)</title>
+    <title>TRPG 文字團錄轉換器 (角色頭貼對照表版) 測試版</title>
     <style>
         /* 控制台樣式 */
-        body { font-family: -apple-system, sans-serif; max-width: 850px; margin: 0 auto; padding: 20px; background: #f5f5f5; color: #333; }
+        body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; color: #333; }
         .setup-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; }
@@ -145,13 +145,17 @@
             </ol>
             <div class="help-tip">💡 每次修改設定之後，都要重新點一次「一鍵生成紀錄」才會套用最新設定。</div>
 
-            <h3>二、對話格式（兩種可混用）</h3>
+            <h3>二、對話格式（三種可混用）</h3>
             <h4>格式A - 角色名：對話</h4>
             <pre>角色名：對話內容。</pre>
             <h4>格式B - 時間+名字+內容在同一行/內容寫在下面</h4>
             <pre>[2026/1/12 下午 10:00] 角色名
 這是對話內容，可以寫好幾行
 （用一個空白行結束這一則訊息）</pre>
+            <h4>格式C - 完全沒有時間戳記，純「角色名」單獨一行</h4>
+            <pre>角色名
+這是對話內容</pre>
+            <div class="help-tip">⚠️ 格式C 必須先把「角色名」登記在「角色頭貼對照表」或「旁白身份」名單裡，系統才會認得這是一個角色名字，否則會被當成一般敘述文字（旁白）處理。</div>
             <p>時間格式固定要是 <code>[年/月/日 上午或下午 時:分]</code>，所有訊息生成時會自動依時間排序。時間預設不顯示，可用「顯示訊息時間」勾選框開啟。</p>
 
             <h3>三、標題設定</h3>
@@ -461,6 +465,12 @@ https://cdn.discordapp.com/attachments/.../image.png?...</pre>
             const avatarMap = getAvatarMap();
             const narratorSet = getNarratorSet();
 
+            // 判斷某個名字是否「已登記」（在角色頭貼對照表或旁白名單裡）
+            // 用來辨識沒有時間戳記、單獨一行的「角色名」是否要當成新訊息的開頭
+            function isRegisteredName(name) {
+                return !!(name && (avatarMap[name] || narratorSet.has(name)));
+            }
+
             const file = fileInput.files[0];
             const reader = new FileReader();
 
@@ -478,8 +488,8 @@ https://cdn.discordapp.com/attachments/.../image.png?...</pre>
                 let lastKnownTs = null; // 用來讓沒有時間戳記的內容（旁白、Embed 續行等）跟著前一則訊息排序
 
                 // openAcc 型別：
-                //  narrative / embed：{ type, text, sortKey }
-                //  chat（新格式：時間+名字獨立一行，內容在下面幾行）：{ type:'chat', speaker, text, sortKey, timeLabel }
+                //  narrative / embed / attachment：{ type, text, sortKey }
+                //  chat（名字獨立一行，內容在下面幾行）：{ type:'chat', speaker, text, sortKey, timeLabel }
                 let openAcc = null;
 
                 // ===== 標題長條偵測：==========\n副標題\n========== =====
@@ -615,8 +625,10 @@ https://cdn.discordapp.com/attachments/.../image.png?...</pre>
                     // ===== 處理目前正在收集中的區塊（若有） =====
                     if (openAcc) {
                         if (openAcc.type === 'chat') {
-                            // 新格式的訊息內容：只要沒有新的時間戳記、也不是旁白/Embed/Attachments 開頭，就視為內容延續
-                            if (!ts && !isEmbedMarker(rest) && !isAttachmentMarker(rest) && !(rest.startsWith('旁白：') || rest.startsWith('旁白:'))) {
+                            // 內容延續：只要沒有新的時間戳記、不是另一個已登記角色的「純名字行」、
+                            // 也不是旁白/Embed/Attachments 開頭，就視為內容延續
+                            const isNewBareName = !ts && isRegisteredName(rest);
+                            if (!ts && !isNewBareName && !isEmbedMarker(rest) && !isAttachmentMarker(rest) && !(rest.startsWith('旁白：') || rest.startsWith('旁白:'))) {
                                 openAcc.text += rawLine + "\n";
                                 return;
                             }
@@ -658,7 +670,7 @@ https://cdn.discordapp.com/attachments/.../image.png?...</pre>
                         return;
                     }
 
-                    // 舊格式：「[時間] 名字：內容」在同一行
+                    // 格式A：「[時間] 名字：內容」在同一行（也支援沒有時間戳記的「名字：內容」）
                     // 注意：網址本身也帶冒號（https:），要先排除，避免把網址誤判成「名字：內容」
                     const inlineMatch = /^https?:\/\//i.test(rest) ? null : rest.match(/^(?:\[.*?\]\s*)?([^：:]+?)\s*[：:]\s*(.*)/);
                     if (inlineMatch) {
@@ -667,10 +679,18 @@ https://cdn.discordapp.com/attachments/.../image.png?...</pre>
                         return;
                     }
 
-                    // 新格式：「[時間] 名字」單獨一行，內容在接下來幾行
+                    // 格式B：「[時間] 名字」單獨一行，內容在接下來幾行
                     if (ts && rest) {
                         flushOpenAcc();
                         openAcc = { type: 'chat', speaker: rest, text: '', sortKey: currentSortKey(), timeLabel: raw };
+                        return;
+                    }
+
+                    // 格式C（無時間戳記）：「角色名」單獨一行，內容在接下來幾行
+                    // 需要該名字已登記在角色頭貼對照表或旁白名單，才會被視為角色名字（避免誤判一般敘述文字）
+                    if (!ts && rest && isRegisteredName(rest)) {
+                        flushOpenAcc();
+                        openAcc = { type: 'chat', speaker: rest, text: '', sortKey: currentSortKey(), timeLabel: null };
                         return;
                     }
 
