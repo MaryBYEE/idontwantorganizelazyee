@@ -6,4 +6,11 @@
 - 可調整光明模式or暗黑模式（PDF不支援暗黑模式）
 
 （第一版）
-trpg_log_converter_v09072026.2
+trpg_log_converter_v09072026
+
+此插件是為了偷懶和方便分辨/觀看人物之間的對話以及旁白的團錄轉換器。
+例如Discord跑圖記錄，把輸出的txt檔案扔進去
+
+圖片URL不建議使用DC的URL（會有失聯風險）
+*推薦Plurk的圖片URL
+
