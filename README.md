@@ -1,6 +1,8 @@
 
 【第二版】trpg_log_converter_v18072026
+
 https://marybyee.github.io/idontwantorganizelazyee/trpg_log_converter_v18072026.html
+
 添加內容：
 - 可直接上傳電腦圖片（但匯出檔案會隨著圖片大小增加MB）
 - 可調整成電腦模式or手機模式
@@ -8,6 +10,7 @@ https://marybyee.github.io/idontwantorganizelazyee/trpg_log_converter_v18072026.
 
 
 【第一版】trpg_log_converter_v09072026
+
 https://marybyee.github.io/idontwantorganizelazyee/trpg_log_converter_v09072026.html
 
 ————————————————————————————————————————————————————————————————————————————
