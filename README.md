@@ -4,7 +4,7 @@
 
 
 【第三版】trpg_log_converter_v20260919（NEW！）
-
+https://github.com/MaryBYEE/idontwantorganizelazyee/blob/main/trpg_log_converter_v20260919.html
 
 添加內容：
 
